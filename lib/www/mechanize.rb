@@ -21,6 +21,7 @@ require 'www/mechanize/form'
 require 'www/mechanize/pluggable_parsers'
 require 'www/mechanize/inspect'
 require 'www/mechanize/monkey_patch'
+require 'www/mechanize/chain'
 
 module WWW
   # = Synopsis
@@ -517,17 +518,24 @@ module WWW
     end
   
     # uri is an absolute URI
-    def fetch_page(options, request=nil, cur_page=current_page(), request_data=[], redirects = 0)
-      unless options.is_a? Hash
-        raise ArgumentError.new("uri must be specified") unless uri = options
-        raise ArgumentError.new("request must be specified") unless request
-      else
-        raise ArgumentError.new("uri must be specified") unless uri = options[:uri]
-        raise ArgumentError.new("request must be specified") unless request = options[:request]
-        cur_page = options[:page] || current_page()
-        request_data = options[:request_data] || []
-        headers = options[:headers]
-      end
+    def fetch_page(params)
+      options = {
+        :request    => nil,
+        :response   => nil,
+        :connection => nil,
+        :referer    => current_page(),
+        :uri        => nil,
+        :verb       => :get,
+        :redirects  => 0,
+        :user_data  => [],
+        :headers    => {},
+      }.merge(params)
+
+      Chain.new([
+        Chain::ArgumentValidator.new
+        Chain::URIParser.new
+      ])
+
       raise "unsupported scheme: #{uri.scheme}" unless ['http', 'https'].include?(uri.scheme.downcase)
   
       log.info("#{ request.class }: #{ request.path }") if log
